@@ -64,6 +64,7 @@ void addToList(List *list, char *value) {
     ListNode *node = malloc(sizeof(ListNode));
     node->previous = list->head;
     node->value = value;
+    list->head = node;
     list->count++;
 }
 
@@ -88,6 +89,7 @@ int main(int argc, char **args) {
                 exit(1);
             }
             fileName = args[i + 1];
+            i++;
         } else if (strcmp("--create", arg) == 0) {
             create = 1;
         } else if (strcmp("--extract", arg) == 0) {
@@ -129,13 +131,14 @@ int main(int argc, char **args) {
                 printf("Error while opening file %s", node->value);
                 exit(0);
             }
+
+            size_t l = strlen(node->value);
+            fwrite(&l, sizeof(size_t), 1, output);
+            fwrite(node->value, 1, l, output);
             fseek(input, 0, SEEK_END);
             long size = ftell(input);
             fwrite(&size, sizeof(long), 1, output);
             rewind(input);
-            size_t l = strlen(node->value);
-            fwrite(&size, sizeof(size_t), 1, output);
-            fwrite(node->value, 1, l, output);
             int c;
             while ((c = fgetc(input)) != EOF) fputc(c, output);
             node = node->previous;
@@ -151,20 +154,21 @@ int main(int argc, char **args) {
         for (int i = 0; i < count; i++) {
             size_t nameSize;
             fread(&nameSize, sizeof(size_t), 1, input);
-            char *name = malloc(nameSize + 1);
-            fread(&name, 1, nameSize, input);
+            char *name = malloc((nameSize + 1) * sizeof(char));
             name[nameSize] = '\0';
+            fread(name, 1, nameSize, input);
 
             if (list) {
-                printf("%s", fileName);
+                printf("%s\n", name);
             }
             long fileSize;
             fread(&fileSize, sizeof(long), 1, input);
             if (extract) {
-                FILE *output = fopen(fileName, "wb");
+                FILE *output = fopen(name, "wb");
                 for (long j = 0; j < fileSize; ++j) {
                     fputc(fgetc(input), output);
                 }
+                fclose(output);
             } else {
                 for (long j = 0; j < fileSize; ++j) {
                     fgetc(input);
